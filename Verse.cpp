@@ -28,5 +28,5 @@ Ref Verse::getRef() {
 
 // display reference and verse
 void Verse::display() {
-    cout << verseRef.getVerse() << " " << verseText << endl;
- }
+	cout << "<b>(" << verseRef.getVerse() << ")</b>    " << verseText << endl;
+}
