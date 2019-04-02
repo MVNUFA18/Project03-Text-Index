@@ -3,17 +3,12 @@
  * receives an Ajax request from web client
  * extracts search string, and sends request to bibleserver
  */
+
+ //Stuff for Pipes  
 #include <iostream>
 #include <fstream>
 #include <string>
-#include <stdio.h>
-// Stuff for Ajax
-#include "/home/class/csc3004/cgicc/Cgicc.h"
-#include "/home/class/csc3004/cgicc/HTTPHTMLHeader.h"
-#include "/home/class/csc3004/cgicc/HTMLClasses.h"
-using namespace cgicc;
-
-//Stuff for Pipes   
+#include <stdio.h> 
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -27,6 +22,13 @@ using namespace cgicc;
 #include "fifo.h"
 
 using namespace std;
+
+// Stuff for Ajax
+#include "/home/class/csc3004/cgicc/Cgicc.h"
+#include "/home/class/csc3004/cgicc/HTTPHTMLHeader.h"
+#include "/home/class/csc3004/cgicc/HTMLClasses.h"
+using namespace cgicc;
+
 
 #define logging
 
@@ -58,62 +60,50 @@ string timestamp() {
 #endif
 
 int main() {
-	
+
+cout << "Content-Type: text/plain\n\n" << endl;
+
+#ifdef logging
+logFile.open(logFilename.c_str(), ios::out);
+#endif
 
   Cgicc cgi; 
 
   // Collect input data 
-  form_iterator searchType = cgi.getElement("search_type");
-  form_iterator version = cgi.getElement("version");
-  form_iterator book = cgi.getElement("book");
-  form_iterator chapter = cgi.getElement("chapter");
-  form_iterator verse = cgi.getElement("verse");
-  form_iterator numberOfVerses = cgi.getElement("numberOfVerses");
+  form_iterator stIterator = cgi.getElement("search_type");
+  form_iterator bookIterator = cgi.getElement("book");
+  form_iterator chapterIterator = cgi.getElement("chapter");
+  form_iterator verseIterator = cgi.getElement("verse");
+  form_iterator nvIterator = cgi.getElement("numberOfVerses");
+  form_iterator versionIterator = cgi.getElement("version");
 
   // Passes the required response header with content type to the client web page.
 
-  cout << "Content-Type: text/plain\n\n" << endl;
-  
+  log("Started Client");
   //Check input data
-  bool validInput = true;
+  bool validInput = false;
   
-  //Chapter Check
-  if (chapter != cgi.getElements().end()) {
-	 int chapterNum = chapter->getIntegerValue();
-	 if (chapterNum > 150) {
-		 cout << "<p>Chapter number (" << chapterNum << ") is too high.</p>" << endl;
-		 validInput = false;
-	 }
-	 else if (chapterNum <= 0) {
-		 cout << "<p>Only numeric chapters greater than zero are allowed!</p>" << endl;
-		 validInput = false;
-	 }
-  }
-  
-  //Verse Check - if we pass the chapter check
-  if (validInput) {
-	 int verseNum = verse->getIntegerValue();
-	 if (verseNum <= 0) {
-		 cout << "<p>Only numeric verses greater than zero are allowed!</p>" << endl;
-		 validInput = false;
-	 }
-  }
-  
-  //Check Number of Verses, check for validity
-  int numberOfValidVerses;
-  if (numberOfVerses->getValue() == "") {
-	  numberOfValidVerses = 1;
-  }
-  else if(validInput) {
-	  int numVerses = numberOfVerses->getIntegerValue();
-	  if(numVerses<=0)
-	  {
-		  cout << "<p>You must input a positive number of verses!</p>"<<endl;
-		  validInput = false;
+  //Valid input check
+  if (chapterIterator != cgi.getElements().end() && verseIterator != cgi.getElements().end() && nvIterator != cgi.getElements().end()) {
+	  int chapter = chapterIterator->getIntegerValue();
+	  int verse = verseIterator->getIntegerValue();
+	  int verseCount = nvIterator->getIntegerValue();
+	  if (chapter <= 0) {
+		  cout << "<p> No negative or zero chapters! </p>" << endl;
 	  }
-	  else 
-	  numberOfValidVerses = numVerses;	  
+	  else if (verse <= 0) {
+		  cout << "<p> No negative or zero verse! </p>" << endl;
+	  }
+	  else if (verseCount < 0) {
+		  cout << "<p> No negative verse count! </p>" << endl;
+	  }
+	  else
+		  validInput = true;
   }
+  else {
+	  cout << "<p> Missing parameter </p>" << endl;
+  }
+
   
   /* SEND BACK THE RESULTS
    * We do this by building a result string and sending it to the web page.
@@ -121,14 +111,26 @@ int main() {
    */
 
   if (validInput) {
-	cout << "Search Type: <b>" << **searchType << "</b>" << endl;
+	cout << "Search Type: <b>" << **stIterator << "</b>" << endl;
+	cout << "<p>";
+	
+	int chapter = chapterIterator->getIntegerValue();
+	int verse = verseIterator->getIntegerValue();
+	int verseCount = nvIterator->getIntegerValue();
+	int book = bookIterator->getIntegerValue();
+	int version = versionIterator->getIntegerValue();
+	int numberOfVerses = nvIterator->getIntegerValue();
+
+	if (verseCount == 0)
+		verseCount = 1;
 	
 	//use convertInt to make sure we're sending correct data type 
-	string searchString = convertInt(book->getIntegerValue())
-					+":"+convertInt(chapter->getIntegerValue())
-					+":"+convertInt(verse->getIntegerValue())
-					+":"+convertInt(numberOfValidVerses)
-					+":"+version->getValue();
+	string searchString = convertInt(book)
+					+":"+convertInt(chapter)
+					+":"+convertInt(verse)
+					+":"+convertInt(numberOfVerses)
+					+":"+convertInt(version);
+
   int length = searchString.length();
 	
 	//Wrap everything in a try so we can debug any error messages that may come
@@ -137,9 +139,9 @@ int main() {
 				  Fifo recfifo(receiver);
 				  Fifo sendfifo(sender);
 
-				#ifdef logging
-				  logFile.open(logFilename.c_str(),ios::out);
-				#endif
+				//#ifdef logging
+				//  logFile.open(logFilename.c_str(),ios::out);
+				//#endif
 
 
 				  sendfifo.openwrite();

@@ -124,7 +124,6 @@ int main() {
 				v = webster.lookup(numberOfVerses, ref, result);
 			else if(version==5)
 				v = ylt.lookup(numberOfVerses, ref, result);
-
 			//if we don't have the given version, throw NO_VERSION error
 			else {
 				version_found = false;
